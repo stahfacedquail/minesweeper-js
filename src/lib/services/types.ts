@@ -1,0 +1,1 @@
+export type NeighbourPositions = `${"T" | "B"}${"L" | "C" | "R"}` | `M${"L" | "R"}`;
