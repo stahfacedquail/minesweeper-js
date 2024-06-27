@@ -23,7 +23,7 @@
 
 <style lang="scss">
   button {
-    width: 100%;
-    height: 100%;
+    width: 2rem;
+    height: 2rem;
   }
 </style>

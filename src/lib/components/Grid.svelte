@@ -10,16 +10,24 @@
   export let columns: number;
   export let numMines: number;
 
-  let outcome: string;
   const outcome$ = writable<GameOutcome>(GAME_OUTCOME.PreStart);
 
-  const grid = generateGrid(rows, columns, numMines);
-  const grid$ = writable(grid.map((row) => row.map((cell) => ({
-    value: cell,
-    open: false
-  }))));
+  let grid: ReturnType<typeof generateGrid>;
+  const grid$ = writable<{
+    value: string | number,
+    open: boolean
+  }[][]>();
 
   function onCellClicked(row: number, col: number) {
+    if ($outcome$ === GAME_OUTCOME.PreStart) {
+      outcome$.set(GAME_OUTCOME.Ongoing);
+      grid = generateGrid(rows, columns, numMines, [row, col]);
+      grid$.set(grid.map((row) => row.map((cell) => ({
+        value: cell,
+        open: false
+      }))));
+    }
+
     $grid$[row][col].open = true;
 
     const cell = $grid$[row][col];
@@ -79,7 +87,6 @@
   function checkGrid(rowClicked: number, colClicked: number) {
     const clickedCell = $grid$[rowClicked][colClicked];
     if (clickedCell.value === "💥" && clickedCell.open) {
-      outcome = "Game over";
       outcome$.set(GAME_OUTCOME.Lost);
       return;
     }
@@ -90,13 +97,11 @@
         const cell = $grid$[r][c];
         if (cell.value !== "X" && !cell.open) {
           hasWon = false;
-          outcome$.set(GAME_OUTCOME.Ongoing);
         }
       }
     }
 
     if (hasWon) {
-      outcome = "Yay!  You won :)";
       outcome$.set(GAME_OUTCOME.Won);
     }
   }
@@ -112,15 +117,15 @@
 
 <Timer start={$outcome$ === GAME_OUTCOME.Ongoing} />
 
-<table on:focus|once={() => { outcome$.set(GAME_OUTCOME.Ongoing); }}>
+<table>
   {#each Array(rows) as _, r}
     <tr>
     {#each Array(columns) as __, c}
-      {@const cellData = $grid$[r][c]}
+      {@const cellData = $grid$?.[r]?.[c]}
       <td>
         <Cell
-          value={cellData.value}
-          open={cellData.open}
+          value={cellData?.value}
+          open={cellData?.open}
           disabled={$outcome$ === GAME_OUTCOME.Lost}
           on:clicked={() => { onCellClicked(r, c); }}
         />

@@ -1,11 +1,38 @@
 import { NEIGHBOUR_POSITIONS } from "$lib/services/constants";
 import type { NeighbourPositions } from "$lib/services/types";
 
-export function generateGrid(rows: number, cols: number, numMines: number) {
+export function generateGrid(rows: number, cols: number, numMines: number, mandatoryEmptyCell?: [number, number]) {
+  let untouchablePositions: number[] = [];
+  if (mandatoryEmptyCell) {
+    const mainCellPosition = mandatoryEmptyCell[0] * cols + mandatoryEmptyCell[1];
+
+    untouchablePositions = [
+      mainCellPosition - cols - 1,
+      mainCellPosition - cols,
+      mainCellPosition - cols + 1,
+      mainCellPosition - 1,
+      mainCellPosition,
+      mainCellPosition + 1,
+      mainCellPosition + cols - 1,
+      mainCellPosition + cols,
+      mainCellPosition + cols + 1,
+    ].filter((position) => position >= 0 && position < (rows * cols));
+  }
+
   const minePositions = new Set<number>();
   const numCells = rows * cols;
-  while (minePositions.size < numMines) {
-    minePositions.add(Math.floor(Math.random() * numCells));
+  if (untouchablePositions.length > 0) {
+    while (minePositions.size < numMines) {
+      const i = Math.floor(Math.random() * numCells);
+      if (untouchablePositions.includes(i))
+        continue;
+      minePositions.add(i);
+    }
+  } else {
+    while (minePositions.size < numMines) {
+      const i = Math.floor(Math.random() * numCells);
+      minePositions.add(i);
+    }
   }
 
   const grid: (number | string)[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
