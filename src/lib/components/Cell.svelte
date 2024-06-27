@@ -1,8 +1,9 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher } from "svelte";
 
   export let value: string | number;
   export let open = false;
+  export let disabled: boolean;
   
   const dispatch = createEventDispatcher();
 
@@ -17,6 +18,7 @@
   style:color={ open ? "initial" : "transparent" }
   style:background-color={ open ? "yellow" : "initial" }
   on:click={onClick}
+  {disabled}
 >{ value }</button>
 
 <style lang="scss">

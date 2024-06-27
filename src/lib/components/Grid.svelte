@@ -1,14 +1,16 @@
 <script lang="ts">
   import Cell from "$lib/components/Cell.svelte";
-    import { NEIGHBOUR_POSITIONS } from "$lib/services/constants";
+  import { NEIGHBOUR_POSITIONS, GAME_OUTCOME } from "$lib/services/constants";
   import { generateGrid, getAllNeighbours, getNeighbour } from "$lib/services/grid";
-    import { writable } from "svelte/store";
+  import type { GameOutcome } from "$lib/services/types";
+  import { writable } from "svelte/store";
 
   export let rows: number;
   export let columns: number;
   export let numMines: number;
 
   let outcome: string;
+  const outcome$ = writable<GameOutcome>(GAME_OUTCOME.PreStart);
 
   const grid = generateGrid(rows, columns, numMines);
   const grid$ = writable(grid.map((row) => row.map((cell) => ({
@@ -77,6 +79,7 @@
     const clickedCell = $grid$[rowClicked][colClicked];
     if (clickedCell.value === "💥" && clickedCell.open) {
       outcome = "Game over";
+      outcome$.set(GAME_OUTCOME.Lost);
       return;
     }
 
@@ -86,19 +89,29 @@
         const cell = $grid$[r][c];
         if (cell.value !== "X" && !cell.open) {
           hasWon = false;
+          outcome$.set(GAME_OUTCOME.Ongoing);
         }
       }
     }
 
-    if (hasWon) outcome = "Yay!  You won :)";
+    if (hasWon) {
+      outcome = "Yay!  You won :)";
+      outcome$.set(GAME_OUTCOME.Won);
+    }
   }
 </script>
 
-<h1
-  style:visibility={ outcome ? "visible" : "hidden" }
->{ outcome }</h1>
+<h1>{
+  $outcome$ === GAME_OUTCOME.Won
+    ? "Yay!  You won :)"
+    : $outcome$ === GAME_OUTCOME.Lost
+      ? "Game over"
+      : $outcome$ === GAME_OUTCOME.PreStart
+        ? "<<<>>>"
+        : "1... 2... 3..."
+ }</h1>
 
-<table>
+<table on:focus|once={() => { outcome$.set(GAME_OUTCOME.Ongoing); }}>
   {#each Array(rows) as _, r}
     <tr>
     {#each Array(columns) as __, c}
@@ -107,6 +120,7 @@
         <Cell
           value={cellData.value}
           open={cellData.open}
+          disabled={$outcome$ === GAME_OUTCOME.Lost}
           on:clicked={() => { onCellClicked(r, c); }}
         />
       </td>
