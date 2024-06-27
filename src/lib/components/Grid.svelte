@@ -1,5 +1,6 @@
 <script lang="ts">
   import Cell from "$lib/components/Cell.svelte";
+  import Timer from "$lib/components/Timer.svelte";
   import { NEIGHBOUR_POSITIONS, GAME_OUTCOME } from "$lib/services/constants";
   import { generateGrid, getAllNeighbours, getNeighbour } from "$lib/services/grid";
   import type { GameOutcome } from "$lib/services/types";
@@ -101,15 +102,15 @@
   }
 </script>
 
-<h1>{
+<h1 style:visibility={ $outcome$ === GAME_OUTCOME.Won || $outcome$ === GAME_OUTCOME.Lost ? "visible" : "hidden" }>{
   $outcome$ === GAME_OUTCOME.Won
     ? "Yay!  You won :)"
     : $outcome$ === GAME_OUTCOME.Lost
       ? "Game over"
-      : $outcome$ === GAME_OUTCOME.PreStart
-        ? "<<<>>>"
-        : "1... 2... 3..."
- }</h1>
+      : "New game"
+}</h1>
+
+<Timer start={$outcome$ === GAME_OUTCOME.Ongoing} />
 
 <table on:focus|once={() => { outcome$.set(GAME_OUTCOME.Ongoing); }}>
   {#each Array(rows) as _, r}
