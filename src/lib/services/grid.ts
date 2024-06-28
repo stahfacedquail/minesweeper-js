@@ -1,7 +1,12 @@
 import { NEIGHBOUR_POSITIONS } from "$lib/services/constants";
-import type { NeighbourPositions } from "$lib/services/types";
+import type { CellValue, NeighbourPositions } from "$lib/services/types";
 
-export function generateGrid(rows: number, cols: number, numMines: number, mandatoryEmptyCell?: [number, number]) {
+export function generateGrid(
+  rows: number,
+  cols: number,
+  numMines: number,
+  mandatoryEmptyCell?: [number, number],
+): CellValue[][] {
   let untouchablePositions: number[] = [];
   if (mandatoryEmptyCell) {
     const mainCellPosition = mandatoryEmptyCell[0] * cols + mandatoryEmptyCell[1];
@@ -35,7 +40,7 @@ export function generateGrid(rows: number, cols: number, numMines: number, manda
     }
   }
 
-  const grid: (number | string)[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
+  const grid: CellValue[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
 
   minePositions.forEach((pos) => {
     const row = Math.floor(pos / cols);

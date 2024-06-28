@@ -3,7 +3,7 @@
   import Timer from "$lib/components/Timer.svelte";
   import { NEIGHBOUR_POSITIONS, GAME_OUTCOME } from "$lib/services/constants";
   import { generateGrid, getAllNeighbours, getNeighbour } from "$lib/services/grid";
-  import type { GameOutcome } from "$lib/services/types";
+  import type { CellValue, GameOutcome } from "$lib/services/types";
   import { writable } from "svelte/store";
 
   export let rows: number;
@@ -14,8 +14,9 @@
 
   let grid: ReturnType<typeof generateGrid>;
   const grid$ = writable<{
-    value: string | number,
-    open: boolean
+    value: CellValue,
+    open: boolean,
+    flagged: boolean,
   }[][]>();
 
   function onCellClicked(row: number, col: number) {
@@ -24,20 +25,23 @@
       grid = generateGrid(rows, columns, numMines, [row, col]);
       grid$.set(grid.map((row) => row.map((cell) => ({
         value: cell,
-        open: false
+        open: false,
+        flagged: false,
       }))));
     }
 
     $grid$[row][col].open = true;
 
     const cell = $grid$[row][col];
-    if (cell.value === "X") {
-      $grid$[row][col].value = "💥";
-    } else if (cell.value === 0) {
+    if (cell.value === 0) {
       openNeighbours(row, col);
     }
 
     checkGrid(row, col);
+  }
+
+  function onCellFlagToggled(row: number, col: number) {
+    $grid$[row][col].flagged = !$grid$[row][col].flagged;
   }
 
   function openNeighbours(row: number, col: number) {
@@ -86,7 +90,7 @@
 
   function checkGrid(rowClicked: number, colClicked: number) {
     const clickedCell = $grid$[rowClicked][colClicked];
-    if (clickedCell.value === "💥" && clickedCell.open) {
+    if (clickedCell.value === "X" && clickedCell.open) {
       outcome$.set(GAME_OUTCOME.Lost);
       return;
     }
@@ -126,8 +130,10 @@
         <Cell
           value={cellData?.value}
           open={cellData?.open}
+          flagged={cellData?.flagged}
           disabled={$outcome$ === GAME_OUTCOME.Lost}
           on:clicked={() => { onCellClicked(r, c); }}
+          on:flagged={() => { onCellFlagToggled(r, c); }}
         />
       </td>
     {/each}
