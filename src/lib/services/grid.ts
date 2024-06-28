@@ -66,7 +66,7 @@ export function getAllNeighbours(
   row: number,
   col: number,
 ) {
-  const neighbours: typeof grid[number][number] = [];
+  const neighbours: (typeof grid[number][number])[] = [];
   NEIGHBOUR_POSITIONS.forEach((neighbourPos) => {
     const neighbour = getNeighbour(neighbourPos, grid, row, col);
     if (neighbour !== undefined)

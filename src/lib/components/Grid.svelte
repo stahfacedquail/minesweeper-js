@@ -13,7 +13,6 @@
 
   const outcome$ = writable<GameOutcome>();
 
-  let grid: ReturnType<typeof generateGrid>;
   const grid$ = writable<{
     value?: CellValue,
     open: boolean,
@@ -45,7 +44,7 @@
     if ($outcome$ === GRID_STATE.PreStart || $outcome$ === GRID_STATE.Uninitialised) {
       outcome$.set(GRID_STATE.Ongoing);
 
-      grid = generateGrid(rows, columns, numMines, [row, col]);
+      const grid = generateGrid(rows, columns, numMines, [row, col]);
       $grid$.forEach((row, r) => {
         row.forEach((cell, c) => {
           $grid$[r][c].value = grid[r][c]
@@ -56,7 +55,7 @@
     $grid$[row][col].open = true;
 
     const cell = $grid$[row][col];
-    if (cell.value === 0) {
+    if (typeof cell.value === "number") {
       openNeighbours(row, col);
     }
 
@@ -71,12 +70,19 @@
   }
 
   function openNeighbours(row: number, col: number) {
-    if (getAllNeighbours(grid, row, col).some((n: any) => n === "X")) {
-      return; // TODO: Fix typing
+    const neighbours = getAllNeighbours($grid$, row, col);
+    const bombNeighbours = neighbours.filter((n) => n.value === "X");
+    const hasSomeBombNeighbours = bombNeighbours.length > 0;
+    if ($grid$[row][col].value === 0 && hasSomeBombNeighbours) {
+      return;
+    } else if (typeof $grid$[row][col].value === "number" && hasSomeBombNeighbours) {
+      const numNeighboursFlagged = neighbours.filter((n) => n.flagged).length;
+      const enoughFlagsForBombNeighbours = bombNeighbours.length === numNeighboursFlagged;
+      if (!enoughFlagsForBombNeighbours) return;
     }
 
     NEIGHBOUR_POSITIONS.forEach((neighbourPos) => {
-      if (getNeighbour(neighbourPos, grid, row, col) !== undefined) {
+      if (getNeighbour(neighbourPos, $grid$, row, col) !== undefined) {
         let neighbourRow: number;
         let neighbourCol: number;
 
@@ -108,31 +114,38 @@
 
         if (!$grid$[neighbourRow][neighbourCol].open && !$grid$[neighbourRow][neighbourCol].flagged) {
           $grid$[neighbourRow][neighbourCol].open = true;
-          openNeighbours(neighbourRow, neighbourCol);
+
+          if ($grid$[neighbourRow][neighbourCol].value === 0)
+            openNeighbours(neighbourRow, neighbourCol);
         }
       }
     });
   }
 
   function checkGrid(rowClicked: number, colClicked: number) {
+    // Check 1: Is the cell that just got clicked on a mine?  Immediate loss.
     const clickedCell = $grid$[rowClicked][colClicked];
     if (clickedCell.value === "X" && clickedCell.open) {
       outcome$.set(GRID_STATE.Lost);
       return;
     }
 
-    let hasWon = true;
-    for (let r = 0; r < $grid$.length && hasWon; r++) {
-      for (let c = 0; c < $grid$[r].length && hasWon; c++) {
-        const cell = $grid$[r][c];
-        if (cell.value !== "X" && !cell.open) {
-          hasWon = false;
-        }
-      }
+    // Check 2: Are any cells open that are mines?
+    // (strictly not a necessary check as nothing should open a mine cell but the user, but hey...)
+    const openMine = $grid$.some((row) => row.some((cell) => cell.value === "X" && cell.open));
+    if (openMine) {
+      outcome$.set(GRID_STATE.Lost);
+      return;
     }
 
-    if (hasWon) {
+    // Check 3: Are all of the unopened cells mines?  Win :)
+    const unopenedCells = $grid$.reduce((listOfCells, row) => {
+      return listOfCells.concat(row.filter((cell) => !cell.open));
+    }, [] as (typeof $grid$[number][number])[]);
+    const unopenedCellsAreAllMines = unopenedCells.every((cell) => cell.value === "X");
+    if (unopenedCellsAreAllMines) {
       outcome$.set(GRID_STATE.Won);
+      return;
     }
   }
 
@@ -149,7 +162,8 @@
 
 <Timer
   start={$outcome$ === GRID_STATE.Ongoing || $outcome$ === GRID_STATE.Uninitialised}
-  stop={$outcome$ === GRID_STATE.Lost || $outcome$ === GRID_STATE.Won || $outcome$ === GRID_STATE.PreStart}
+  stop={$outcome$ === GRID_STATE.Lost || $outcome$ === GRID_STATE.Won}
+  reset={$outcome$ === GRID_STATE.PreStart}
 />
 
 <h2>{$numFlagsLeftToPlace$} flags to go</h2>

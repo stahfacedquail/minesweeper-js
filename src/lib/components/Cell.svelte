@@ -26,7 +26,7 @@
   const dispatch = createEventDispatcher();
 
   function onClick() {
-    if (open || flagged) return;
+    if (flagged) return;
 
     dispatch("clicked");
   }
