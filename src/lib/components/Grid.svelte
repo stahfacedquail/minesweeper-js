@@ -1,27 +1,24 @@
 <script lang="ts">
   import Cell from "$lib/components/Cell.svelte";
   import Timer from "$lib/components/Timer.svelte";
-  import { NEIGHBOUR_POSITIONS, GAME_OUTCOME } from "$lib/services/constants";
+  import { NEIGHBOUR_POSITIONS, GRID_STATE } from "$lib/services/constants";
   import { generateGrid, getAllNeighbours, getNeighbour } from "$lib/services/grid";
   import type { CellValue, GameOutcome } from "$lib/services/types";
+  import { onMount } from "svelte";
   import { derived, writable } from "svelte/store";
 
   export let rows: number;
   export let columns: number;
   export let numMines: number;
 
-  const outcome$ = writable<GameOutcome>(GAME_OUTCOME.PreStart);
+  const outcome$ = writable<GameOutcome>();
 
   let grid: ReturnType<typeof generateGrid>;
   const grid$ = writable<{
     value?: CellValue,
     open: boolean,
     flagged: boolean,
-  }[][]>(Array.from({ length: rows },
-    () => new Array(columns)
-      .fill(null)
-      .map(() => ({ value: undefined, open: false, flagged: false }))
-  ));
+  }[][]>();
 
   const numFlagsLeftToPlace$ = derived(
     grid$,
@@ -35,12 +32,19 @@
     }
   );
 
-  function onCellClicked(row: number, col: number) {
-    if ($outcome$ === GAME_OUTCOME.PreStart) {
-      outcome$.set(GAME_OUTCOME.Ongoing);
-    }
+  function createNewGame() {
+    outcome$.set(GRID_STATE.PreStart);
+    grid$.set(Array.from({ length: rows },
+      () => new Array(columns)
+        .fill(null)
+        .map(() => ({ value: undefined, open: false, flagged: false }))
+    ));
+  }
 
-    if (!grid) {
+  function onCellClicked(row: number, col: number) {
+    if ($outcome$ === GRID_STATE.PreStart || $outcome$ === GRID_STATE.Uninitialised) {
+      outcome$.set(GRID_STATE.Ongoing);
+
       grid = generateGrid(rows, columns, numMines, [row, col]);
       $grid$.forEach((row, r) => {
         row.forEach((cell, c) => {
@@ -60,8 +64,8 @@
   }
 
   function onCellFlagToggled(row: number, col: number) {
-    if ($outcome$ === GAME_OUTCOME.PreStart) {
-      outcome$.set(GAME_OUTCOME.Ongoing);
+    if ($outcome$ === GRID_STATE.PreStart) {
+      outcome$.set(GRID_STATE.Uninitialised);
     }
     $grid$[row][col].flagged = !$grid$[row][col].flagged;
   }
@@ -113,7 +117,7 @@
   function checkGrid(rowClicked: number, colClicked: number) {
     const clickedCell = $grid$[rowClicked][colClicked];
     if (clickedCell.value === "X" && clickedCell.open) {
-      outcome$.set(GAME_OUTCOME.Lost);
+      outcome$.set(GRID_STATE.Lost);
       return;
     }
 
@@ -128,22 +132,29 @@
     }
 
     if (hasWon) {
-      outcome$.set(GAME_OUTCOME.Won);
+      outcome$.set(GRID_STATE.Won);
     }
   }
+
+  onMount(createNewGame);
 </script>
 
-<h1 style:visibility={ $outcome$ === GAME_OUTCOME.Won || $outcome$ === GAME_OUTCOME.Lost ? "visible" : "hidden" }>{
-  $outcome$ === GAME_OUTCOME.Won
+<h1 style:visibility={ $outcome$ === GRID_STATE.Won || $outcome$ === GRID_STATE.Lost ? "visible" : "hidden" }>{
+  $outcome$ === GRID_STATE.Won
     ? "Yay!  You won :)"
-    : $outcome$ === GAME_OUTCOME.Lost
+    : $outcome$ === GRID_STATE.Lost
       ? "Game over"
       : "New game"
 }</h1>
 
-<Timer start={$outcome$ === GAME_OUTCOME.Ongoing} />
+<Timer
+  start={$outcome$ === GRID_STATE.Ongoing || $outcome$ === GRID_STATE.Uninitialised}
+  stop={$outcome$ === GRID_STATE.Lost || $outcome$ === GRID_STATE.Won || $outcome$ === GRID_STATE.PreStart}
+/>
 
 <h2>{$numFlagsLeftToPlace$} flags to go</h2>
+
+<button on:click={createNewGame}>New game</button>
 
 <table>
   {#each Array(rows) as _, r}
@@ -155,7 +166,7 @@
           value={cellData?.value}
           open={cellData?.open}
           flagged={cellData?.flagged}
-          disabled={$outcome$ === GAME_OUTCOME.Lost}
+          disabled={$outcome$ === GRID_STATE.Lost}
           on:clicked={() => { onCellClicked(r, c); }}
           on:flagged={() => { onCellFlagToggled(r, c); }}
         />
