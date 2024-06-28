@@ -4,7 +4,7 @@
   import { NEIGHBOUR_POSITIONS, GAME_OUTCOME } from "$lib/services/constants";
   import { generateGrid, getAllNeighbours, getNeighbour } from "$lib/services/grid";
   import type { CellValue, GameOutcome } from "$lib/services/types";
-  import { writable } from "svelte/store";
+  import { derived, writable } from "svelte/store";
 
   export let rows: number;
   export let columns: number;
@@ -14,20 +14,39 @@
 
   let grid: ReturnType<typeof generateGrid>;
   const grid$ = writable<{
-    value: CellValue,
+    value?: CellValue,
     open: boolean,
     flagged: boolean,
-  }[][]>();
+  }[][]>(Array.from({ length: rows },
+    () => new Array(columns)
+      .fill(null)
+      .map(() => ({ value: undefined, open: false, flagged: false }))
+  ));
+
+  const numFlagsLeftToPlace$ = derived(
+    grid$,
+    (g) => {
+      if (!g) return numMines;
+
+      return numMines - g.reduce(
+        (numFlags, row) => numFlags
+          + row.filter((cell) => cell.flagged).length,
+        0);
+    }
+  );
 
   function onCellClicked(row: number, col: number) {
     if ($outcome$ === GAME_OUTCOME.PreStart) {
       outcome$.set(GAME_OUTCOME.Ongoing);
+    }
+
+    if (!grid) {
       grid = generateGrid(rows, columns, numMines, [row, col]);
-      grid$.set(grid.map((row) => row.map((cell) => ({
-        value: cell,
-        open: false,
-        flagged: false,
-      }))));
+      $grid$.forEach((row, r) => {
+        row.forEach((cell, c) => {
+          $grid$[r][c].value = grid[r][c]
+        })
+      });
     }
 
     $grid$[row][col].open = true;
@@ -41,6 +60,9 @@
   }
 
   function onCellFlagToggled(row: number, col: number) {
+    if ($outcome$ === GAME_OUTCOME.PreStart) {
+      outcome$.set(GAME_OUTCOME.Ongoing);
+    }
     $grid$[row][col].flagged = !$grid$[row][col].flagged;
   }
 
@@ -80,7 +102,7 @@
           neighbourCol = col + 1;
         }
 
-        if (!$grid$[neighbourRow][neighbourCol].open) {
+        if (!$grid$[neighbourRow][neighbourCol].open && !$grid$[neighbourRow][neighbourCol].flagged) {
           $grid$[neighbourRow][neighbourCol].open = true;
           openNeighbours(neighbourRow, neighbourCol);
         }
@@ -120,6 +142,8 @@
 }</h1>
 
 <Timer start={$outcome$ === GAME_OUTCOME.Ongoing} />
+
+<h2>{$numFlagsLeftToPlace$} flags to go</h2>
 
 <table>
   {#each Array(rows) as _, r}

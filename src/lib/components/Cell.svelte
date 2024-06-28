@@ -2,17 +2,21 @@
   import type { CellValue } from "$lib/services/types";
   import { createEventDispatcher } from "svelte";
 
-  export let value: CellValue;
+  export let value: CellValue | undefined;
   export let open: boolean;
   export let flagged: boolean;
   export let disabled: boolean;
 
   let displayValue: string;
   $: if (open) {
-    if (value === "X")
+    if (value === undefined)
+      displayValue = "";  // should never be the case; mines should be assigned the moment any cell is clicked
+    else if (value === "X")
       displayValue = "💣";
     else if (value > 0)
       displayValue = `${value}`;
+    else
+      displayValue = "";
   } else if (flagged) {
     displayValue = "🚩";
   } else {
