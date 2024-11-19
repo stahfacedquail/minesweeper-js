@@ -10,7 +10,9 @@
   let displayValue: string;
   $: if (open) {
     if (value === undefined)
-      displayValue = "";  // should never be the case; mines should be assigned the moment any cell is clicked
+      // it should never be the case that a cell is open but has no value;
+      // mines should be assigned the moment any cell is clicked...
+      displayValue = ""; 
     else if (value === "X")
       displayValue = "💣";
     else if (value > 0)
@@ -26,12 +28,14 @@
   const dispatch = createEventDispatcher();
 
   function onClick() {
+    // Ignore clicks on flagged cells
     if (flagged) return;
 
     dispatch("clicked");
   }
 
   function onRightClick() {
+    // Ignore attempts to flag an open cell
     if (open) return;
 
     dispatch("flagged");

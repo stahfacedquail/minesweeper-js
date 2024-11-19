@@ -9,6 +9,7 @@
 
   export let rows: number;
   export let columns: number;
+  /** How many mines should be placed in the grid? */
   export let numMines: number;
 
   const outcome$ = writable<GameOutcome>();
